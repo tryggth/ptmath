@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Three Faces of Fano: Interpretability Cycle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 500px;
+        }
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* Stone-100 */
+            color: #44403c; /* Stone-700 */
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Merriweather', serif;
+        }
+        .tab-active {
+            border-bottom: 2px solid #57534e; /* Stone-600 */
+            color: #292524; /* Stone-800 */
+            font-weight: 600;
+        }
+        .tab-inactive {
+            color: #a8a29e; /* Stone-400 */
+        }
+        .tab-inactive:hover {
+            color: #57534e; /* Stone-600 */
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .axiom-card {
+            transition: transform 0.2s;
+        }
+        .axiom-card:hover {
+            transform: translateY(-2px);
+        }
+        /* Cycle Diagram Styles */
+        .cycle-btn {
+            transition: all 0.3s ease;
+        }
+        .cycle-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .cycle-active {
+            ring-width: 2px;
+            ring-offset-width: 2px;
+            transform: scale(1.05);
+        }
+    </style>
+    <!-- Chosen Palette: Calm Harmony (Warm Neutrals with Soft Accents) -->
+    <!-- Application Structure Plan: 
+         1. Header: Title and Abstract.
+         2. Navigation: Tab-based system.
+         3. Sections: Overview, Geo/Alg/Graph Deep Dives.
+         4. Synthesis (UPDATED): Now includes an interactive "Interpretability Cycle" diagram (Triangle layout on desktop) showing the translation logic between theories using click-to-reveal interactions.
+    -->
+    <!-- Visualization & Content Choices:
+         1. Charts (Fano Scatter, Hamming Bar, Heawood Network) -> Canvas/Chart.js -> Interactive Data.
+         2. Axiom Grids -> HTML Cards -> Detailed Text.
+         3. Cycle Diagram -> HTML/CSS Grid + Buttons -> Interactive Logic Flow (No SVG).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-stone-200 border-b border-stone-300 py-8 px-4 md:px-12">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-stone-800 mb-2">The Three Faces of Fano</h1>
+                    <p class="text-stone-600 italic text-lg">A Case Study in Morita Equivalence</p>
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-stone-200">
+                    <span class="text-xs font-bold uppercase tracking-wider text-stone-400">Classifying Topos</span>
+                    <div class="text-xl font-mono text-stone-700">Set<sup>PGL(3,2)</sup></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 md:px-12 overflow-x-auto">
+            <div class="flex space-x-8" id="nav-container">
+                <button onclick="switchTab('overview')" id="tab-overview" class="py-4 px-2 tab-active transition-colors duration-200 whitespace-nowrap">Overview</button>
+                <button onclick="switchTab('geometry')" id="tab-geometry" class="py-4 px-2 tab-inactive transition-colors duration-200 whitespace-nowrap">Geometry (Fano)</button>
+                <button onclick="switchTab('algebra')" id="tab-algebra" class="py-4 px-2 tab-inactive transition-colors duration-200 whitespace-nowrap">Algebra (Hamming)</button>
+                <button onclick="switchTab('graph')" id="tab-graph" class="py-4 px-2 tab-inactive transition-colors duration-200 whitespace-nowrap">Graph (Heawood)</button>
+                <button onclick="switchTab('synthesis')" id="tab-synthesis" class="py-4 px-2 tab-inactive transition-colors duration-200 whitespace-nowrap">Synthesis & Cycle</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-4 md:px-12 py-8 max-w-6xl">
+
+        <!-- SECTION: OVERVIEW -->
+        <div id="content-overview" class="fade-in space-y-12 block">
+            <div class="max-w-3xl mx-auto text-center space-y-4">
+                <h2 class="text-2xl font-bold text-stone-800">One Object, Three Shadows</h2>
+                <p class="text-stone-600 leading-relaxed">
+                    In Category Theory, <strong class="text-stone-800">Morita Equivalence</strong> reveals that distinct mathematical theories can describe the exact same underlying structure. The Fano Plane, Hamming Code, and Heawood Graph appear to be unrelated "physical" models, but they are isomorphic "syntaxes" for the same "semantic" object—the Universal Object in the classifying topos <strong>Set<sup>PGL(3,2)</sup></strong>.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Geometric Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-teal-500 hover:shadow-md transition-shadow">
+                    <h3 class="text-xl font-bold text-teal-700 mb-4">Geometric Theory</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Structure</span>
+                            <span class="font-medium text-stone-700">Fano Plane</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Sorts</span>
+                            <span class="font-medium text-stone-700">Points & Lines</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Relation</span>
+                            <span class="font-medium text-stone-700">Incidence</span>
+                        </div>
+                        <div class="mt-4 text-sm text-stone-600 bg-teal-50 p-3 rounded">
+                            "Two points determine a unique line."
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Algebraic Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-indigo-500 hover:shadow-md transition-shadow">
+                    <h3 class="text-xl font-bold text-indigo-700 mb-4">Algebraic Theory</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Structure</span>
+                            <span class="font-medium text-stone-700">Hamming Code</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Sorts</span>
+                            <span class="font-medium text-stone-700">Vectors (Bits)</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Relation</span>
+                            <span class="font-medium text-stone-700">Parity</span>
+                        </div>
+                        <div class="mt-4 text-sm text-stone-600 bg-indigo-50 p-3 rounded">
+                            "Minimum weight is at least 3."
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graph Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-rose-500 hover:shadow-md transition-shadow">
+                    <h3 class="text-xl font-bold text-rose-700 mb-4">Graph Theory</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Structure</span>
+                            <span class="font-medium text-stone-700">Heawood Graph</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Sorts</span>
+                            <span class="font-medium text-stone-700">Vertices</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-100 pb-2">
+                            <span class="text-stone-500 text-sm">Relation</span>
+                            <span class="font-medium text-stone-700">Adjacency</span>
+                        </div>
+                        <div class="mt-4 text-sm text-stone-600 bg-rose-50 p-3 rounded">
+                            "Smallest cycle length is 6."
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: GEOMETRY -->
+        <div id="content-geometry" class="hidden fade-in space-y-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-teal-800 mb-2">The Geometry of Incidence</h2>
+                        <p class="text-stone-600 max-w-2xl">
+                            The Fano Plane is the smallest projective plane. It is rigorously defined by four key axioms. The visualization constructs this geometry, showing the 7 points and 7 lines.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <!-- Visualization -->
+                    <div class="bg-stone-50 rounded-xl p-4 border border-stone-200 order-2 lg:order-1">
+                        <div class="chart-container">
+                            <canvas id="fanoChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-stone-400 mt-2">PG(2,2): Fano Plane Construction</p>
+                    </div>
+
+                    <!-- Axioms Panel -->
+                    <div class="order-1 lg:order-2">
+                        <h3 class="font-bold text-stone-800 mb-4 flex items-center">
+                            <span class="w-2 h-8 bg-teal-500 mr-2 rounded"></span> Axiomatic Basis
+                        </h3>
+                        <div class="grid grid-cols-1 gap-4">
+                            <!-- Axiom 1 -->
+                            <div class="axiom-card bg-teal-50 p-4 rounded-lg border border-teal-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-teal-900 text-sm">1. Uniqueness of Lines</h4>
+                                    <span class="text-xs font-mono text-teal-600">A1</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">Any two distinct points determine exactly one line.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-teal-800">∀P≠Q ∃!L (P∈L ∧ Q∈L)</code>
+                            </div>
+                            <!-- Axiom 2 -->
+                            <div class="axiom-card bg-teal-50 p-4 rounded-lg border border-teal-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-teal-900 text-sm">2. Uniqueness of Intersection</h4>
+                                    <span class="text-xs font-mono text-teal-600">A2</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">Any two distinct lines intersect at exactly one point.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-teal-800">∀L≠M ∃!P (P∈L ∧ P∈M)</code>
+                            </div>
+                            <!-- Axiom 3 -->
+                            <div class="axiom-card bg-teal-50 p-4 rounded-lg border border-teal-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-teal-900 text-sm">3. Non-degeneracy</h4>
+                                    <span class="text-xs font-mono text-teal-600">A3</span>
+                                </div>
+                                <p class="text-xs text-stone-700">There exist 4 points such that no 3 are collinear (a quadrangle exists).</p>
+                            </div>
+                            <!-- Axiom 4 -->
+                            <div class="axiom-card bg-teal-50 p-4 rounded-lg border border-teal-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-teal-900 text-sm">4. Order Two</h4>
+                                    <span class="text-xs font-mono text-teal-600">A4</span>
+                                </div>
+                                <p class="text-xs text-stone-700">Every line contains exactly 3 points.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: ALGEBRA -->
+        <div id="content-algebra" class="hidden fade-in space-y-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-indigo-800 mb-2">The Algebra of Information</h2>
+                        <p class="text-stone-600 max-w-2xl">
+                            The Hamming [7,4] Code is a linear error-correcting code. It is defined by algebraic properties regarding vector spaces and weight distributions.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <!-- Visualization -->
+                    <div class="bg-stone-50 rounded-xl p-4 border border-stone-200 order-2 lg:order-1">
+                        <div class="chart-container">
+                            <canvas id="hammingChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-stone-400 mt-2">Hamming Weight Distribution</p>
+                    </div>
+
+                    <!-- Axioms Panel -->
+                    <div class="order-1 lg:order-2">
+                        <h3 class="font-bold text-stone-800 mb-4 flex items-center">
+                            <span class="w-2 h-8 bg-indigo-500 mr-2 rounded"></span> Axiomatic Basis
+                        </h3>
+                        <div class="grid grid-cols-1 gap-4">
+                            <!-- Axiom 1 -->
+                            <div class="axiom-card bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-indigo-900 text-sm">1. Linearity</h4>
+                                    <span class="text-xs font-mono text-indigo-600">A1</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">The code C is a linear subspace of the vector space.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-indigo-800">∀u,v∈C ⇒ u+v ∈ C</code>
+                            </div>
+                            <!-- Axiom 2 -->
+                            <div class="axiom-card bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-indigo-900 text-sm">2. Dimension</h4>
+                                    <span class="text-xs font-mono text-indigo-600">A2</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">The subspace has dimension 4 (containing 16 codewords).</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-indigo-800">dim(C) = 4</code>
+                            </div>
+                            <!-- Axiom 3 -->
+                            <div class="axiom-card bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-indigo-900 text-sm">3. Minimum Distance</h4>
+                                    <span class="text-xs font-mono text-indigo-600">A3</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">For any non-zero codeword, the weight is at least 3.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-indigo-800">∀w≠0, weight(w) ≥ 3</code>
+                            </div>
+                            <!-- Axiom 4 -->
+                            <div class="axiom-card bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-indigo-900 text-sm">4. Perfect Packing</h4>
+                                    <span class="text-xs font-mono text-indigo-600">A4</span>
+                                </div>
+                                <p class="text-xs text-stone-700">Every 7-bit string is within distance 1 of exactly one codeword.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: GRAPH -->
+        <div id="content-graph" class="hidden fade-in space-y-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm">
+                <div class="flex flex-col md:flex-row justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-rose-800 mb-2">The Topology of Connections</h2>
+                        <p class="text-stone-600 max-w-2xl">
+                            The Heawood Graph is the incidence graph of the Fano Plane. Its structure is governed by graph-theoretic rules concerning connectivity and cycles.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <!-- Visualization -->
+                    <div class="bg-stone-50 rounded-xl p-4 border border-stone-200 order-2 lg:order-1">
+                        <div class="chart-container">
+                            <canvas id="heawoodChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-stone-400 mt-2">Bipartite Heawood Structure</p>
+                    </div>
+
+                    <!-- Axioms Panel -->
+                    <div class="order-1 lg:order-2">
+                        <h3 class="font-bold text-stone-800 mb-4 flex items-center">
+                            <span class="w-2 h-8 bg-rose-500 mr-2 rounded"></span> Axiomatic Basis
+                        </h3>
+                        <div class="grid grid-cols-1 gap-4">
+                            <!-- Axiom 1 -->
+                            <div class="axiom-card bg-rose-50 p-4 rounded-lg border border-rose-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-rose-900 text-sm">1. Bipartite Structure</h4>
+                                    <span class="text-xs font-mono text-rose-600">A1</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">Vertices are split into two sets (Points, Lines). Edges only connect different sets.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-rose-800">V = V0 ∪ V1</code>
+                            </div>
+                            <!-- Axiom 2 -->
+                            <div class="axiom-card bg-rose-50 p-4 rounded-lg border border-rose-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-rose-900 text-sm">2. Regularity (Cubic)</h4>
+                                    <span class="text-xs font-mono text-rose-600">A2</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">Every vertex is connected to exactly 3 neighbors.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-rose-800">∀v, deg(v) = 3</code>
+                            </div>
+                            <!-- Axiom 3 -->
+                            <div class="axiom-card bg-rose-50 p-4 rounded-lg border border-rose-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-rose-900 text-sm">3. Girth</h4>
+                                    <span class="text-xs font-mono text-rose-600">A3</span>
+                                </div>
+                                <p class="text-xs text-stone-700 mb-2">The smallest cycle length is 6. No squares (4-cycles) exist.</p>
+                                <code class="text-xs block bg-white px-2 py-1 rounded text-rose-800">girth(G) = 6</code>
+                            </div>
+                            <!-- Axiom 4 -->
+                            <div class="axiom-card bg-rose-50 p-4 rounded-lg border border-rose-100">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-bold text-rose-900 text-sm">4. Diameter</h4>
+                                    <span class="text-xs font-mono text-rose-600">A4</span>
+                                </div>
+                                <p class="text-xs text-stone-700">Any two nodes are connected by a path of length at most 3.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: SYNTHESIS with CYCLE -->
+        <div id="content-synthesis" class="hidden fade-in space-y-12">
+            
+            <!-- Universal Object Intro -->
+            <div class="bg-white p-12 rounded-2xl shadow-sm text-center max-w-4xl mx-auto">
+                <div class="inline-block p-4 rounded-full bg-stone-100 mb-6">
+                    <span class="text-4xl">🔮</span>
+                </div>
+                <h2 class="text-3xl font-bold text-stone-800 mb-6">The Universal Object</h2>
+                <p class="text-lg text-stone-600 leading-relaxed mb-8">
+                    The <strong>Universal Object</strong> in the topos is the abstract "source code" that generates all these behaviors. It is defined not by what it is made of, but by its symmetry group <strong>PGL(3,2)</strong>.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                    <div class="p-4 border border-stone-100 rounded bg-stone-50">
+                        <h4 class="font-bold text-teal-700 mb-2">Geometric Filter</h4>
+                        <p class="text-sm text-stone-600">Reveals <strong>Incidence</strong>. <br>Shows how elements align.</p>
+                    </div>
+                    <div class="p-4 border border-stone-100 rounded bg-stone-50">
+                        <h4 class="font-bold text-indigo-700 mb-2">Algebraic Filter</h4>
+                        <p class="text-sm text-stone-600">Reveals <strong>Parity</strong>. <br>Shows how information is conserved.</p>
+                    </div>
+                    <div class="p-4 border border-stone-100 rounded bg-stone-50">
+                        <h4 class="font-bold text-rose-700 mb-2">Topological Filter</h4>
+                        <p class="text-sm text-stone-600">Reveals <strong>Connectivity</strong>. <br>Shows the web of relationships.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Cycle of Interpretability -->
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-2xl font-bold text-center text-stone-800 mb-8">The Cycle of Interpretability</h2>
+                <p class="text-center text-stone-500 mb-8 max-w-2xl mx-auto">
+                    Morita Equivalence implies a closed loop. Click the arrows below to trace how the axioms of one theory are interpreted inside the next.
+                </p>
+
+                <!-- Responsive Triangular Grid Layout -->
+                <div class="bg-stone-50 rounded-2xl p-6 md:p-12 border border-stone-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-y-12 items-center relative">
+                        
+                        <!-- Row 1: Geometry (Top Center) -->
+                        <div class="md:col-start-2 flex justify-center z-10">
+                            <div class="bg-white border-2 border-teal-500 text-teal-800 font-bold py-3 px-6 rounded-lg shadow-sm">
+                                Geometry
+                            </div>
+                        </div>
+
+                        <!-- Transition 1: Geo -> Alg (Right Side Arrow) -->
+                        <div class="md:col-start-3 md:row-start-2 flex justify-center md:justify-start transform md:-translate-x-8 md:-translate-y-8 z-20">
+                            <button onclick="showCycle('geo-alg')" class="cycle-btn bg-stone-800 text-white rounded-full p-3 md:p-4 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-400" aria-label="Interpret Geometry in Algebra">
+                                <span class="text-xl md:text-2xl font-bold transform rotate-90 md:rotate-45 inline-block">→</span>
+                            </button>
+                        </div>
+
+                        <!-- Row 2: Graph (Left) - Center Panel - Algebra (Right) -->
+                        <div class="md:col-start-1 md:row-start-3 flex justify-center z-10 order-last md:order-none">
+                            <div class="bg-white border-2 border-rose-500 text-rose-800 font-bold py-3 px-6 rounded-lg shadow-sm">
+                                Graph Theory
+                            </div>
+                        </div>
+
+                        <!-- Central Explanation Panel -->
+                        <div class="md:col-start-2 md:row-start-2 md:row-span-2 flex justify-center items-center p-4">
+                            <div id="cycle-display" class="bg-white border border-stone-200 p-6 rounded-xl shadow-md w-full text-center transition-all duration-300 min-h-[200px] flex flex-col justify-center">
+                                <p class="text-stone-400 italic">Select an arrow to reveal the translation logic.</p>
+                            </div>
+                        </div>
+
+                        <div class="md:col-start-3 md:row-start-3 flex justify-center z-10">
+                            <div class="bg-white border-2 border-indigo-500 text-indigo-800 font-bold py-3 px-6 rounded-lg shadow-sm">
+                                Algebra
+                            </div>
+                        </div>
+
+                        <!-- Transition 2: Alg -> Graph (Bottom Arrow) -->
+                        <div class="md:col-start-2 md:row-start-3 flex justify-center transform md:translate-y-12 z-20">
+                             <button onclick="showCycle('alg-graph')" class="cycle-btn bg-stone-800 text-white rounded-full p-3 md:p-4 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400" aria-label="Interpret Algebra in Graph Theory">
+                                <span class="text-xl md:text-2xl font-bold transform rotate-180 inline-block">→</span>
+                            </button>
+                        </div>
+
+                        <!-- Transition 3: Graph -> Geo (Left Side Arrow) -->
+                        <div class="md:col-start-1 md:row-start-2 flex justify-center md:justify-end transform md:translate-x-8 md:-translate-y-8 z-20">
+                             <button onclick="showCycle('graph-geo')" class="cycle-btn bg-stone-800 text-white rounded-full p-3 md:p-4 hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-400" aria-label="Interpret Graph Theory in Geometry">
+                                <span class="text-xl md:text-2xl font-bold transform -rotate-90 md:-rotate-45 inline-block">→</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="bg-stone-800 text-stone-400 py-8 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">Based on "The Three Faces of Fano" Analysis &bull; Generated for Badge 0618</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        const tabs = ['overview', 'geometry', 'algebra', 'graph', 'synthesis'];
+        let activeTab = 'overview';
+
+        // --- Cycle Data ---
+        const cycleContent = {
+            'geo-alg': {
+                title: "Points → Indices",
+                color: "text-teal-700",
+                logic: "Spatial points are interpreted as the coordinate positions (indices 1 to 7) of the vector space.",
+                invariant: "Geometric <strong>Collinearity</strong> (3 points on a line) translates to Algebraic <strong>Minimum Weight</strong> (3 indices summing to zero)."
+            },
+            'alg-graph': {
+                title: "Vectors → Sets",
+                color: "text-indigo-700",
+                logic: "Vector positions become the V0 vertex set. Valid codewords are defined by their connectivity to the V1 set (parity checks).",
+                invariant: "Algebraic <strong>Linear Dependence</strong> translates to Topological <strong>Even Parity</strong> via bipartite adjacency."
+            },
+            'graph-geo': {
+                title: "Nodes → Sorts",
+                color: "text-rose-700",
+                logic: "The single set of 14 vertices is 'unzipped' into two distinct sorts: Points and Lines.",
+                invariant: "Topological <strong>Adjacency</strong> between the two sets translates back into Geometric <strong>Incidence</strong>."
+            }
+        };
+
+        function showCycle(key) {
+            const display = document.getElementById('cycle-display');
+            const data = cycleContent[key];
+            
+            // Fade out, update, fade in
+            display.style.opacity = '0';
+            setTimeout(() => {
+                display.innerHTML = `
+                    <h4 class="text-xl font-bold ${data.color} mb-3">${data.title}</h4>
+                    <p class="text-stone-700 mb-4 text-sm leading-relaxed">${data.logic}</p>
+                    <div class="bg-stone-100 p-3 rounded-lg border border-stone-200">
+                        <p class="text-xs text-stone-600"><strong>Invariant Preserved:</strong><br>${data.invariant}</p>
+                    </div>
+                `;
+                display.style.opacity = '1';
+            }, 200);
+        }
+
+        // --- Navigation Logic ---
+        function switchTab(tabId) {
+            // Update Tab Styles
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const content = document.getElementById(`content-${t}`);
+                
+                if (t === tabId) {
+                    btn.classList.remove('tab-inactive');
+                    btn.classList.add('tab-active');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.add('tab-inactive');
+                    btn.classList.remove('tab-active');
+                    content.classList.add('hidden');
+                }
+            });
+            activeTab = tabId;
+        }
+
+        // --- Utils: Label Wrapping & Tooltips ---
+        function wrapLabel(str, maxLen = 15) {
+            if (str.length <= maxLen) return str;
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + " " + words[i]).length <= maxLen) {
+                    currentLine += " " + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        const commonTooltipOptions = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) return label.join(' ');
+                    return label;
+                }
+            },
+            backgroundColor: 'rgba(68, 64, 60, 0.9)', // Stone-700
+            titleFont: { family: 'Inter', size: 13 },
+            bodyFont: { family: 'Inter', size: 12 },
+            padding: 10,
+            cornerRadius: 8
+        };
+
+        // --- Chart 1: Fano Plane (Scatter) ---
+        function initFanoChart() {
+            const ctx = document.getElementById('fanoChart').getContext('2d');
+            
+            // Fano Points Coordinates (Equilateral triangle base)
+            const pts = {
+                A: {x: 0, y: 1},
+                B: {x: 0.866, y: -0.5},
+                C: {x: -0.866, y: -0.5},
+                D: {x: 0, y: -0.5},
+                E: {x: -0.433, y: 0.25},
+                F: {x: 0.433, y: 0.25},
+                G: {x: 0, y: 0}
+            };
+
+            // Lines drawn as sequences with null gaps
+            const lineData = [
+                pts.A, pts.F, pts.B, {x:null,y:null}, // Side 1
+                pts.B, pts.D, pts.C, {x:null,y:null}, // Side 2
+                pts.C, pts.E, pts.A, {x:null,y:null}, // Side 3
+                pts.A, pts.G, pts.D, {x:null,y:null}, // Median 1
+                pts.B, pts.G, pts.E, {x:null,y:null}, // Median 2
+                pts.C, pts.G, pts.F, {x:null,y:null}, // Median 3
+                pts.E, pts.F, pts.D, pts.E 
+            ];
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    labels: ['Top', 'Right Mid', 'Right', 'Break', 'Right', 'Bot Mid', 'Left', 'Break', 'Left', 'Left Mid', 'Top', 'Break', 'Top', 'Center', 'Bot Mid', 'Break', 'Right', 'Center', 'Left Mid', 'Break', 'Left', 'Center', 'Right Mid', 'Break', 'Left Mid', 'Right Mid', 'Bot Mid', 'Left Mid'],
+                    datasets: [{
+                        label: 'Incidence Lines',
+                        data: lineData,
+                        showLine: true,
+                        borderColor: '#2dd4bf', // Teal-400
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    }, {
+                        label: 'Points',
+                        data: [pts.A, pts.B, pts.C, pts.D, pts.E, pts.F, pts.G],
+                        backgroundColor: '#0f766e', // Teal-700
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false, min: -1.2, max: 1.2 },
+                        y: { display: false, min: -1, max: 1.2 }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: commonTooltipOptions
+                    }
+                }
+            });
+        }
+
+        // --- Chart 2: Hamming Code (Bar) ---
+        function initHammingChart() {
+            const ctx = document.getElementById('hammingChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Weight 0', 'Weight 3', 'Weight 4', 'Weight 7'],
+                    datasets: [{
+                        label: 'Codeword Count',
+                        data: [1, 7, 7, 1],
+                        backgroundColor: [
+                            '#e5e5e5', // Zero vector (gray)
+                            '#818cf8', // Min weight (Indigo-400)
+                            '#6366f1', // Indigo-500
+                            '#4338ca'  // Indigo-700
+                        ],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f5f5f4' },
+                            title: { display: true, text: 'Number of Codewords' }
+                        },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: commonTooltipOptions
+                    }
+                }
+            });
+        }
+
+        // --- Chart 3: Heawood Graph (Network) ---
+        function initHeawoodChart() {
+            const ctx = document.getElementById('heawoodChart').getContext('2d');
+            
+            const nodes = [];
+            const edges = [];
+            
+            // Generate 14 nodes (7 inner, 7 outer)
+            for(let i=0; i<14; i++) {
+                const r = i < 7 ? 0.5 : 1.0;
+                const theta = (i % 7) * (2 * Math.PI / 7);
+                nodes.push({
+                    x: r * Math.cos(theta),
+                    y: r * Math.sin(theta),
+                    group: i < 7 ? 'Point (V0)' : 'Line (V1)'
+                });
+            }
+
+            // Generate edges (3-regular bipartite)
+            for(let i=0; i<7; i++) {
+                const source = nodes[i];
+                const target1 = nodes[7 + i];
+                const target2 = nodes[7 + ((i+1)%7)];
+                const target3 = nodes[7 + ((i+3)%7)];
+                
+                edges.push(source, target1, {x:null,y:null});
+                edges.push(source, target2, {x:null,y:null});
+                edges.push(source, target3, {x:null,y:null});
+            }
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    labels: nodes.map(n => n.group),
+                    datasets: [{
+                        label: 'Adjacency',
+                        data: edges,
+                        showLine: true,
+                        borderColor: '#e7e5e4', // Stone-200
+                        borderWidth: 1,
+                        pointRadius: 0
+                    }, {
+                        label: 'Points (V0)',
+                        data: nodes.slice(0, 7),
+                        backgroundColor: '#fb7185', // Rose-400
+                        pointRadius: 7
+                    }, {
+                        label: 'Lines (V1)',
+                        data: nodes.slice(7),
+                        backgroundColor: '#be123c', // Rose-700
+                        pointRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'bottom',
+                            labels: { usePointStyle: true, font: {family: 'Inter'} }
+                        },
+                        tooltip: commonTooltipOptions
+                    }
+                }
+            });
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initFanoChart();
+            initHammingChart();
+            initHeawoodChart();
+        });
+
+        
+    </script>
+</body>
+</html>
+
+    </script>
+</body>
+</html>/html>
+    </script>
+</body>
+</html>
